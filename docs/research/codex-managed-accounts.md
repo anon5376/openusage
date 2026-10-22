@@ -41,8 +41,8 @@ homes, xswap, pi, Keychain) keeps working unchanged.
 - `CodexManagedAccountStore` (`openusage.codexManagedLogins.v1` in UserDefaults): one record per
   managed login — record id (UUID), the home's folder name, verified identity (`workspace|email`),
   created and last-signed-in dates. No tokens, no absolute paths: homes resolve under the current
-  root, so a renamed user folder never strands a record. An unreadable list pauses all account
-  management instead of being overwritten.
+  root, so a renamed user folder never strands a record. An unreadable list — or one that names a
+  folder outside the root — pauses all account management instead of being overwritten.
 - Homes live at `~/Library/Application Support/OpenUsage/codex-accounts/<bundle id>/<uuid>/` (mode
   0700; the bundle id keeps a dev build and the release apart). The CLI writes `auth.json` there;
   OpenUsage treats it as an independent writable Codex home, so the existing token rotation and

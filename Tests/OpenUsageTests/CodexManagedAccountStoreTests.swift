@@ -52,6 +52,32 @@ final class CodexManagedAccountStoreTests: XCTestCase {
         XCTAssertTrue(store.logins.isEmpty)
     }
 
+    func testAFolderThatClimbsOutOfTheRootMakesTheListUnreadable() {
+        // A restored or hand-edited list could name `../../.codex` as a folder. Mapped under the
+        // root, that home would pass for a managed one: never refused as a duplicate, and rotated
+        // into by every refresh. Such a list pauses management like an undecodable one.
+        func store(folder: String) -> CodexManagedAccountStore {
+            let defaults = makeScratchDefaults("CodexManagedEscape")
+            let entry = """
+            [{"id":"5A2E7D7E-2C8B-4D8B-9D2D-1B2C3D4E5F60","folder":"\(folder)","identityKey":"acct-b|bob@test",\
+            "createdAt":"2024-01-01T00:00:00Z","lastSignedInAt":"2024-01-01T00:00:00Z"}]
+            """
+            defaults.set(Data(entry.utf8), forKey: CodexManagedAccountStore.storageKey)
+            return CodexManagedAccountStore(defaults: defaults, root: URL(fileURLWithPath: Self.managedRoot))
+        }
+
+        for folder in ["../../.codex", "a/b", "..", ".", ""] {
+            let escaping = store(folder: folder)
+            XCTAssertTrue(escaping.loadFailed, "folder \(folder) was mapped under the root")
+            XCTAssertTrue(escaping.logins.isEmpty, "folder \(folder) was mapped under the root")
+        }
+
+        // Control: a plain folder name loads under the root.
+        let plain = store(folder: "B")
+        XCTAssertFalse(plain.loadFailed)
+        XCTAssertEqual(plain.logins.first?.home, "\(Self.managedRoot)/B")
+    }
+
     func testManagedRootIsSplitByBundleIdentifier() {
         let support = URL(fileURLWithPath: "/Users/dev/Library/Application Support")
         XCTAssertEqual(

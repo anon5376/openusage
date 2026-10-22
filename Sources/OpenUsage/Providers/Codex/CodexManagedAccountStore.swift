@@ -54,6 +54,15 @@ final class CodexManagedAccountStore {
             if let data = value as? Data {
                 do {
                     stored = try Self.decoder.decode([StoredLogin].self, from: data)
+                    // A folder is one name directly under the root. A restored or hand-edited list
+                    // whose folder climbs out (`../../.codex`) would make that home a managed one:
+                    // skipped by the duplicate check, rotated into by every refresh. Such a list is
+                    // as broken as an undecodable one, and nothing is mapped from it.
+                    if stored.contains(where: { !Self.isFolderName($0.folder) }) {
+                        stored = []
+                        loadFailed = true
+                        AppLog.error(.config, "a managed Codex login names a folder outside the managed root; account management is paused until the list is repaired")
+                    }
                 } catch {
                     loadFailed = true
                     AppLog.error(.config, "managed Codex logins are undecodable; account management is paused until the list is repaired: \(error.localizedDescription)")
@@ -83,6 +92,11 @@ final class CodexManagedAccountStore {
             .appendingPathComponent("OpenUsage", isDirectory: true)
             .appendingPathComponent("codex-accounts", isDirectory: true)
             .appendingPathComponent(bundleIdentifier ?? "unbundled", isDirectory: true)
+    }
+
+    /// One path component, never `.` or `..`: the only shape `persist` ever writes.
+    private static func isFolderName(_ folder: String) -> Bool {
+        !folder.isEmpty && folder != "." && folder != ".." && !folder.contains("/")
     }
 
     func login(identityKey: String) -> CodexManagedLogin? {

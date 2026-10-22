@@ -115,7 +115,8 @@ must be installed.
 - Quitting OpenUsage during a sign-in stops it; a folder left behind by a quit or a crash is cleaned
   up at the next launch. If that cleanup fails (a folder OpenUsage can no longer read or delete), the
   Codex Accounts section says so at launch instead of leaving the folder behind quietly.
-- Should the saved list of accounts ever become unreadable, OpenUsage leaves every folder in place
+- Should the saved list of accounts ever become unreadable (or name a folder outside OpenUsage's own
+  accounts folder), OpenUsage leaves every folder in place
   and pauses Add, Sign In Again, and Remove until it is repaired (the log says why); the accounts
   added in OpenUsage stay off the dashboard until then, and the Codex Accounts section shows the
   error right at launch.
