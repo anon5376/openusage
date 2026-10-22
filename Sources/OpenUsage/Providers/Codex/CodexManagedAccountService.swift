@@ -237,14 +237,14 @@ final class CodexManagedAccountService {
             AppLog.error(LogTag.auth("codex"), "failed to remove a managed Codex home: \(error.localizedDescription)")
             return
         }
-        let name = login.identity.map { name(of: $0) } ?? login.identityKey
+        let account = login.identity.map { name(of: $0) } ?? login.identityKey
         store.remove(id: login.id)
         // The removed account may have been the one on the bare `codex` card. Rebuilt without a
         // login, that card comes back plain and identity-less, and would then adopt this account's
         // cached numbers as its own; its snapshot goes now, before the rebuild can read it.
         forgetSnapshots(accountCardIDs(login.identityKey))
         AppLog.info(LogTag.auth("codex"), "managed login removed")
-        apply(outcome: "Removed \(name).")
+        apply(outcome: "Removed \(account).")
     }
 
     func cancel() {
