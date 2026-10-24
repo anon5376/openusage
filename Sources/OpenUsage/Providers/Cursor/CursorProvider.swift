@@ -234,14 +234,13 @@ final class CursorProvider: ProviderRuntime {
         else {
             return
         }
-        guard let line = CursorUsageMapper.mapGrokBotUsage(usage) else {
+        guard CursorUsageMapper.applyGrokBotUsage(usage, to: &lines, now: now()) else {
             if usage["usagePercent"] != nil || usage["hasNonZeroIncludedLimit"] as? Bool == true ||
                 usage["hasAvailableUsage"] as? Bool == true {
                 AppLog.warn(LogTag.plugin("cursor"), "optional Grok Bot usage response contained invalid usage metadata")
             }
             return
         }
-        lines.append(line)
     }
 
     /// Spend history is best-effort and never affects the live Cursor usage mapping.

@@ -413,6 +413,112 @@ final class CursorEnterpriseProviderTests: XCTestCase {
         XCTAssertEqual(onDemandData.limit, 250)
     }
 
+    func testRefreshPromotesUnifiedWeeklyPoolAndDropsStaleMonthlyLanes() async throws {
+        let now = try XCTUnwrap(OpenUsageISO8601.date(from: "2026-10-16T06:50:00.000Z"))
+        let accessToken = makeCursorJWT(sub: "google-oauth2|enterprise-user")
+        for isUnified in [true, false] {
+            let historyDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("cursor-unified-\(isUnified)-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: historyDirectory) }
+            let http = RoutingHTTPClient { request in
+                switch request.url {
+                case CursorUsageClient.usageURL:
+                    return HTTPResponse(
+                        statusCode: 200,
+                        headers: [:],
+                        body: Data(#"{"billingCycleStart":"1792060056178","billingCycleEnd":"1792664856178","displayThreshold":200}"#.utf8)
+                    )
+                case CursorUsageClient.planURL:
+                    return HTTPResponse(
+                        statusCode: 200,
+                        headers: [:],
+                        body: Data(#"{"planInfo":{"planName":"Enterprise"}}"#.utf8)
+                    )
+                case CursorUsageClient.usageSummaryURL:
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("""
+                    {
+                      "billingCycleStart": "2026-10-01T00:00:00.000Z",
+                      "billingCycleEnd": "2026-11-01T00:00:00.000Z",
+                      "membershipType": "enterprise",
+                      "limitType": "team",
+                      "isUnlimited": false,
+                      "individualUsage": {
+                        "plan": {
+                          "enabled": true,
+                          "used": 4615,
+                          "limit": 4615,
+                          "remaining": 0,
+                          "autoPercentUsed": 62.860238353196095,
+                          "apiPercentUsed": 0,
+                          "totalPercentUsed": 100
+                        },
+                        "onDemand": { "enabled": true, "used": 447, "limit": null, "remaining": null }
+                      },
+                      "teamUsage": {
+                        "onDemand": { "enabled": true, "used": 447, "limit": 0, "remaining": 0 }
+                      }
+                    }
+                    """.utf8))
+                case CursorUsageClient.grokBotUsageURL:
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("""
+                    {
+                      "currentPeriodStart": "2026-10-15T10:27:36.178Z",
+                      "nextResetTimestampUtc": "2026-10-22T10:27:36.178Z",
+                      "usagePercent": 10.205850487540628,
+                      "hasAvailableUsage": true,
+                      "hasNonZeroIncludedLimit": true,
+                      "grokPlanLabel": "Grok Bot Plan",
+                      "cursorPlanName": "Premium",
+                      "isUnified": \(isUnified),
+                      "billingBrand": "SAND_BILLING_BRAND_GROK"
+                    }
+                    """.utf8))
+                default:
+                    return HTTPResponse(statusCode: 404, headers: [:], body: Data())
+                }
+            }
+            let provider = CursorProvider(
+                authStore: CursorAuthStore(
+                    sqlite: KeyValueSQLite(values: [CursorAuthStore.accessTokenKey: accessToken]),
+                    keychain: FakeKeychain()
+                ),
+                usageClient: CursorUsageClient(http: http),
+                now: { now },
+                pricing: { TestPricing.bundled },
+                usageHistoryStore: CursorUsageHistoryStore(directory: historyDirectory)
+            )
+
+            let snapshot = await provider.refresh()
+
+            XCTAssertNil(snapshot.errorCategory)
+            XCTAssertEqual(snapshot.plan, "Enterprise")
+            if isUnified {
+                XCTAssertEqual(snapshot.lines.map(\.label), ["Total usage", "On-demand"])
+                guard case .progress(_, let used, let limit, let format, let resetsAt, let periodDurationMs, _) =
+                    snapshot.lines.first(where: { $0.label == "Total usage" })
+                else {
+                    return XCTFail("Missing unified weekly Total usage line")
+                }
+                XCTAssertEqual(used, 10.205850487540628, accuracy: 0.000001)
+                XCTAssertEqual(limit, 100)
+                XCTAssertEqual(format, .percent)
+                XCTAssertEqual(resetsAt, OpenUsageISO8601.date(from: "2026-10-22T10:27:36.178Z"))
+                XCTAssertEqual(periodDurationMs, MetricPeriod.weekMs)
+            } else {
+                XCTAssertEqual(
+                    snapshot.lines.map(\.label),
+                    ["Total usage", "Cursor Models", "Other Models", "On-demand", "Grok Bot usage"]
+                )
+                XCTAssertEqual(progress(snapshot.lines, "Total usage")?.used, 100)
+                let cursorModels = try XCTUnwrap(progress(snapshot.lines, "Cursor Models")?.used)
+                XCTAssertEqual(cursorModels, 62.860238353196095, accuracy: 0.000001)
+                XCTAssertEqual(progress(snapshot.lines, "Other Models")?.used, 0)
+                let grokBot = try XCTUnwrap(progress(snapshot.lines, "Grok Bot usage")?.used)
+                XCTAssertEqual(grokBot, 10.205850487540628, accuracy: 0.000001)
+            }
+        }
+    }
+
     private func progress(_ lines: [MetricLine], _ label: String) -> (used: Double, limit: Double)? {
         guard case .progress(_, let used, let limit, _, _, _, _) = lines.first(where: { $0.label == label }) else {
             return nil

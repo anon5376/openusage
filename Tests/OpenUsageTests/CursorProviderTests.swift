@@ -90,6 +90,85 @@ final class CursorUsageMapperTests: XCTestCase {
         XCTAssertNil(CursorUsageMapper.mapGrokBotUsage(["hasNonZeroIncludedLimit": true]))
     }
 
+    func testUnifiedGrokBotPoolPromotesWeeklyTotalAndDropsModelSplit() throws {
+        let now = try XCTUnwrap(OpenUsageISO8601.date(from: "2026-10-16T06:50:00Z"))
+        var lines: [MetricLine] = [
+            .values(label: "Credits", values: [MetricValue(number: 25, kind: .dollars)]),
+            .progress(
+                label: "Total usage",
+                used: 100,
+                limit: 100,
+                format: .percent,
+                resetsAt: OpenUsageISO8601.date(from: "2026-11-01T00:00:00Z"),
+                periodDurationMs: CursorUsageMapper.billingPeriodMs
+            ),
+            .progress(label: "Cursor Models", used: 62.86, limit: 100, format: .percent),
+            .progress(label: "Other Models", used: 0, limit: 100, format: .percent),
+            .values(label: "On-demand", values: [MetricValue(number: 4.47, kind: .dollars)])
+        ]
+
+        let applied = CursorUsageMapper.applyGrokBotUsage(
+            [
+                "currentPeriodStart": "2026-10-15T10:27:36.178Z",
+                "nextResetTimestampUtc": "2026-10-22T10:27:36.178Z",
+                "usagePercent": 10.205850487540628,
+                "hasAvailableUsage": true,
+                "hasNonZeroIncludedLimit": true,
+                "isUnified": true
+            ],
+            to: &lines,
+            now: now
+        )
+
+        XCTAssertTrue(applied)
+        XCTAssertEqual(lines.map(\.label), ["Credits", "Total usage", "On-demand"])
+        let total = try XCTUnwrap(progress(lines, "Total usage"))
+        XCTAssertEqual(total.used, 10.205850487540628, accuracy: 0.000001)
+        XCTAssertEqual(total.limit, 100)
+        XCTAssertEqual(total.resetsAt, OpenUsageISO8601.date(from: "2026-10-22T10:27:36.178Z"))
+        XCTAssertEqual(total.periodDurationMs, MetricPeriod.weekMs)
+    }
+
+    func testUnifiedPoolPreservesRequestQuotasAndExpiredOrMissingResets() throws {
+        let now = try XCTUnwrap(OpenUsageISO8601.date(from: "2026-10-16T06:50:00Z"))
+        var requestLines: [MetricLine] = [
+            .progress(label: "Total usage", used: 250, limit: 500, format: .count(suffix: "requests")),
+            .progress(label: "Requests", used: 250, limit: 500, format: .count(suffix: "requests"))
+        ]
+        XCTAssertTrue(CursorUsageMapper.applyGrokBotUsage(
+            [
+                "isUnified": true,
+                "usagePercent": 10,
+                "hasNonZeroIncludedLimit": true,
+                "nextResetTimestampUtc": "2026-10-22T10:27:36.178Z"
+            ],
+            to: &requestLines,
+            now: now
+        ))
+        XCTAssertEqual(requestLines.map(\.label), ["Total usage", "Requests"])
+        XCTAssertEqual(progress(requestLines, "Total usage")?.used, 250)
+
+        for reset in ["", "2020-01-01T00:00:00Z"] {
+            var monthlyLines: [MetricLine] = [
+                .progress(label: "Total usage", used: 100, limit: 100, format: .percent),
+                .progress(label: "Cursor Models", used: 62.86, limit: 100, format: .percent),
+                .progress(label: "Other Models", used: 0, limit: 100, format: .percent)
+            ]
+            XCTAssertTrue(CursorUsageMapper.applyGrokBotUsage(
+                [
+                    "isUnified": true,
+                    "usagePercent": 10,
+                    "hasNonZeroIncludedLimit": true,
+                    "nextResetTimestampUtc": reset
+                ],
+                to: &monthlyLines,
+                now: now
+            ))
+            XCTAssertEqual(monthlyLines.map(\.label), ["Total usage", "Cursor Models", "Other Models"])
+            XCTAssertEqual(progress(monthlyLines, "Total usage")?.used, 100)
+        }
+    }
+
     func testResolvedPlanNamePrefersEnterpriseMembershipOverProPlanInfo() {
         XCTAssertEqual(
             CursorUsageMapper.resolvedPlanLabel(planInfoName: "Pro", membershipType: "enterprise"),
@@ -122,6 +201,14 @@ final class CursorUsageMapperTests: XCTestCase {
         XCTAssertEqual(
             CursorUsageMapper.preferredMembership(local: "enterprise", summary: "team"),
             "enterprise"
+        )
+        XCTAssertEqual(
+            CursorUsageMapper.resolvedPlanLabel(planInfoName: nil, membershipType: "unified_ultra"),
+            "Ultra"
+        )
+        XCTAssertEqual(
+            CursorUsageMapper.resolvedPlanLabel(planInfoName: "Pro", membershipType: "unified_enterprise"),
+            "Enterprise"
         )
     }
 

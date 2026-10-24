@@ -122,6 +122,56 @@ enum CursorUsageMapper {
         )
     }
 
+    /// Applies the `GetSandUsageStatus` payload to the mapped Cursor metric lines. On legacy plans it
+    /// appends the separate Grok Bot weekly meter. On The X Subscription (`isUnified == true`), Cursor
+    /// and Grok share that weekly pool as the sole included allowance, so a current weekly pool
+    /// replaces `Total usage` and drops the stale/duplicate `Cursor Models`, `Other Models`, and
+    /// `Grok Bot usage` meters unless a request-based quota is active.
+    static func applyGrokBotUsage(
+        _ usage: [String: Any],
+        to lines: inout [MetricLine],
+        now: Date = Date()
+    ) -> Bool {
+        guard let line = mapGrokBotUsage(usage),
+              case .progress(_, let used, let limit, let format, let resetsAt, let periodDurationMs, _) = line
+        else {
+            return false
+        }
+
+        guard usage["isUnified"] as? Bool == true else {
+            lines.append(line)
+            return true
+        }
+
+        guard !lines.contains(where: { $0.label == "Requests" }) else {
+            return true
+        }
+
+        guard let resetsAt, resetsAt > now else {
+            return true
+        }
+
+        let unifiedTotal = MetricLine.progress(
+            label: "Total usage",
+            used: used,
+            limit: limit,
+            format: format,
+            resetsAt: resetsAt,
+            periodDurationMs: periodDurationMs
+        )
+        if let index = lines.firstIndex(where: { $0.label == "Total usage" }) {
+            lines[index] = unifiedTotal
+        } else if let creditsIndex = lines.firstIndex(where: { $0.label == "Credits" }) {
+            lines.insert(unifiedTotal, at: creditsIndex + 1)
+        } else {
+            lines.insert(unifiedTotal, at: 0)
+        }
+        lines.removeAll {
+            $0.label == "Cursor Models" || $0.label == "Other Models" || $0.label == "Grok Bot usage"
+        }
+        return true
+    }
+
     static func mapUsage(
         usage: [String: Any],
         planName: String?,
@@ -506,10 +556,17 @@ enum CursorUsageMapper {
     }
 
     private static func normalizedMembership(_ value: String?) -> String? {
-        value?
+        guard let raw = value?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
             .nilIfEmpty
+        else {
+            return nil
+        }
+        if raw.hasPrefix("unified_") {
+            return String(raw.dropFirst("unified_".count)).nilIfEmpty
+        }
+        return raw
     }
 
     private static func planLabel(_ value: String?) -> String? {

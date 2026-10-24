@@ -6,7 +6,7 @@ Tracks your Cursor plan usage using the login from the Cursor app.
 
 | Metric | Meaning |
 |---|---|
-| Total Usage | Plan usage for the billing cycle (percent or dollars; included request count vs. cap on request-based Enterprise accounts) |
+| Total Usage | Plan usage for the billing cycle (percent or dollars; shared weekly pool on The X Subscription; included request count vs. cap on request-based Enterprise accounts) |
 | Cursor Models | Usage percent for Cursor's own models, including Cursor Grok and Composer |
 | Other Models | Usage percent for other models |
 | Grok Bot | Grok Bot weekly usage percent and reset countdown; enabled by default |
@@ -29,9 +29,11 @@ Enterprise/team seats that already return usable model-pool percentages from the
 may still omit on-demand there. In that case OpenUsage merges Extra Usage from `usage-summary`
 without replacing the live pool meters. Personal Pro seats are not probed for that merge.
 
-Grok Bot has its own usage allowance, separate from Cursor's normal billing-cycle meter. Its widget
-is enabled by default in Cursor's On Demand section. It uses your existing Cursor login, so signing
-into the Grok CLI is not required.
+Grok Bot has its own usage allowance on legacy Cursor plans, separate from Cursor's normal billing-cycle
+meter. Its widget is enabled by default in Cursor's On Demand section. It uses your existing Cursor
+login, so signing into the Grok CLI is not required. On The X Subscription (`isUnified: true`), Cursor
+and Grok share one weekly included pool: OpenUsage shows that weekly pool as Total Usage and omits the
+separate Cursor Models, Other Models, and Grok Bot meters.
 
 ## Where credentials come from
 
