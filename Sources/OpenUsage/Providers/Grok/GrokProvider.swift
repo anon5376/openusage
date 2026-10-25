@@ -4,8 +4,8 @@ import Foundation
 final class GrokProvider: ProviderRuntime {
     let provider = Provider(
         id: "grok",
-        displayName: "Grok",
-        icon: .providerMark("grok"),
+        displayName: "XPass",
+        icon: .providerMark("xai"),
         links: [
             .init(label: "Usage", url: "https://grok.com/?_s=usage")
         ]

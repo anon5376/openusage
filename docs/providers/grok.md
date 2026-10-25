@@ -1,6 +1,8 @@
-# Grok
+# XPass (Grok)
 
-Tracks Grok Build credit usage using the login from the Grok CLI.
+The Grok source appears as **XPass** with the xAI logo. It fetches the weekly pool directly from
+Grok using the Grok CLI login; it does not need Cursor authentication. To use Grok alone for XPass,
+enable the Grok source and disable Cursor in Customize. Other providers are unaffected.
 
 ## What it tracks
 
@@ -15,7 +17,7 @@ When Grok reports your subscription tier, OpenUsage shows it beside the provider
 If Cursor explicitly reports The X Subscription and both sources return matching current weekly
 readings, the dashboard puts Grok's source-labelled local spend and trend rows in the **XPass** card.
 It shows the shared allowance once and omits the legacy pay-as-you-go badge there. See
-[Cursor](cursor.md) for the matching rule. Different, stale or failed readings retain the Grok card;
+[Cursor](cursor.md) for the matching rule. Different, stale or failed readings retain the separate Grok-backed XPass card;
 OpenUsage never adds two quota percentages together or links accounts.
 
 The weekly shared pool is the limit Grok enforces for unified-billing accounts (the old monthly credits meter is legacy and no longer shown). Accounts that haven't been migrated to unified billing have no weekly pool, so the Weekly tile reads "No data" there.

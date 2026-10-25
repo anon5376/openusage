@@ -70,10 +70,10 @@ enum ProviderCatalog {
             AntigravityProvider(),
             CopilotProvider(defaults: defaults),
             DevinProvider(),
-            GrokProvider(),
             OllamaProvider(),
             OpenCodeProvider(),
             OpenRouterProvider(),
+            GrokProvider(),
             ZAIProvider()
         ]
         return providers
