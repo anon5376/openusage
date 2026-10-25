@@ -1,4 +1,7 @@
-# OpenUsage
+# OpenUsage — XPass fork
+
+This public fork of [OpenUsage](https://github.com/robinebers/openusage) shows Grok usage as **XPass** with the xAI logo. XPass reads the weekly allowance directly from Grok using your existing Grok CLI login. In Customize, enable **XPass** and turn off **Cursor** to use Grok as the single source.
+
 
 Track your AI coding subscriptions from the macOS menu bar — native Swift edition.
 
@@ -10,15 +13,17 @@ OpenUsage shows how much of your AI coding plans you've used: session and weekly
 
 ## Installation
 
-**Homebrew:**
+Build this fork on macOS 15 (Sequoia) or later with the Swift toolchain installed:
 
 ```sh
-brew install --cask openusage
+git clone --branch xpass https://github.com/anon5376/openusage.git
+cd openusage
+./script/build_and_run.sh
 ```
 
-**Direct download:** grab the latest universal DMG from the [releases page](https://github.com/robinebers/openusage/releases/latest), open it, and drag OpenUsage to your Applications folder.
+The script builds and launches `dist/OpenUsage.app`. To install it, quit OpenUsage and move that app to your Applications folder. This development build has automatic updates disabled and uses separate settings from upstream installations.
 
-Either way, the app updates itself in place via signed, notarized [Sparkle](docs/updates.md) updates. Requires macOS 15 (Sequoia) or later.
+This fork currently publishes source code. The Homebrew cask and [upstream releases](https://github.com/robinebers/openusage/releases/latest) install upstream OpenUsage.
 
 ## Supported Providers
 
@@ -28,10 +33,10 @@ Either way, the app updates itself in place via signed, notarized [Sparkle](docs
 - **[Copilot](docs/providers/copilot.md)** — AI credits, extra usage, organization billing, chat and completions
 - **[Cursor](docs/providers/cursor.md)** — credits, total usage, Grok Bot, Cursor Models, Other Models, requests, on-demand, per-day spend
 - **[Devin](docs/providers/devin.md)** — weekly and daily quota, extra usage balance
-- **[Grok](docs/providers/grok.md)** — weekly shared pool, pay-as-you-go, local daily spend
 - **[Ollama](docs/providers/ollama.md)** — Ollama Cloud monthly credits (or session and weekly limits on legacy plans), purchased credits
 - **[OpenCode](docs/providers/opencode.md)** — Go session/weekly/monthly caps, Zen spend, local daily spend
 - **[OpenRouter](docs/providers/openrouter.md)** — credit balance, daily/weekly/monthly spend (API key)
+- **[XPass (Grok)](docs/providers/grok.md)** — Grok weekly shared pool, pay-as-you-go, local daily spend, xAI logo
 - **[Z.ai](docs/providers/zai.md)** — session, weekly, web-search quotas (GLM Coding Plan, API key)
 
 Most providers read the credentials already on your machine (keychain, auth files, app state) — no extra login. OpenRouter and Z.ai are the exceptions: they have no local credential to reuse, so you supply an API key (see [OpenRouter setup](docs/providers/openrouter.md) or [Z.ai setup](docs/providers/zai.md)). Credentials are used only for the corresponding provider requests. OpenUsage's separate anonymous summaries and public pricing downloads are documented under [Privacy & usage data](docs/privacy.md).
