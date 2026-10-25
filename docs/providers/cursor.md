@@ -33,7 +33,18 @@ Grok Bot has its own usage allowance on legacy Cursor plans, separate from Curso
 meter. Its widget is enabled by default in Cursor's On Demand section. It uses your existing Cursor
 login, so signing into the Grok CLI is not required. On The X Subscription (`isUnified: true`), Cursor
 and Grok share one weekly included pool: OpenUsage shows that weekly pool as Total Usage and omits the
-separate Cursor Models, Other Models, and Grok Bot meters.
+separate Cursor Models, Other Models, and Grok Bot meters. The dashboard calls this tracker **XPass**
+and uses the xAI logo. Its plan badge comes from the unified response when available.
+
+When Grok has a fresh weekly reading with the same reset (within one second) and usage, its local
+spend and trend rows join the XPass card with source names. Fractional readings match within 0.01
+percentage points; a whole-percent Grok reading matches Cursor's truncated percentage bucket. The shared
+weekly allowance appears once, and the legacy Grok pay-as-you-go badge is hidden. Different or failed
+readings stay separate. Matching readings are a display rule, not account-linking evidence.
+
+Cursor and Grok keep their own credentials, histories, provider switches and local API IDs. Customize
+still exposes both data sources. Saved rows and pins are preserved; the old Cursor pool pins display
+one weekly XPass value while unified billing is active. Reordering a spend row stays within its source.
 
 ## Where credentials come from
 

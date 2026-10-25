@@ -15,8 +15,8 @@ struct WidgetData: Hashable {
     /// Subtitle shown on a placed tile with no real backing metric. Copy is intentionally exact.
     static let noDataSubtitle = "No data"
 
-    let title: String          // "Claude 5h", "Cursor credits"
-    let icon: IconSource
+    var title: String          // "Claude 5h", "Cursor credits"
+    var icon: IconSource
     let kind: MetricKind
     let used: Double
     var limit: Double?         // nil => unbounded (number tile); cleared when a .values line resolves

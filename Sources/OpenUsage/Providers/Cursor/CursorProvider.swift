@@ -136,7 +136,7 @@ final class CursorProvider: ProviderRuntime {
                 planName: displayPlanName ?? routingPlanName,
                 unavailableMessage: fallback.message
             )
-            await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
+            await appendGrokBotUsage(to: &mapped, accessToken: currentToken)
             let history = await appendSpendLines(to: &mapped.lines, accessToken: currentToken)
             return snapshot(mapped, usageHistory: history)
         }
@@ -148,7 +148,7 @@ final class CursorProvider: ProviderRuntime {
                     planName: displayPlanName ?? routingPlanName,
                     unavailableMessage: "Cursor request-based usage data unavailable. Try again later."
                 )
-                await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
+                await appendGrokBotUsage(to: &mapped, accessToken: currentToken)
                 return snapshot(mapped)
             } catch {
                 AppLog.warn(LogTag.plugin("cursor"), "optional request-based usage fallback failed")
@@ -174,7 +174,7 @@ final class CursorProvider: ProviderRuntime {
             membershipType: authState.membershipType,
             mapped: &mapped
         )
-        await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
+        await appendGrokBotUsage(to: &mapped, accessToken: currentToken)
         let history = await appendSpendLines(to: &mapped.lines, accessToken: currentToken)
         return snapshot(mapped, usageHistory: history)
     }
@@ -220,9 +220,9 @@ final class CursorProvider: ProviderRuntime {
         ) ?? mapped.plan
     }
 
-    /// Grok Bot uses the same Cursor account but keeps a separate weekly allowance. Missing access is
+    /// Grok Bot uses the Cursor login; unified accounts share its weekly allowance. Missing access is
     /// normal for ineligible accounts; malformed data and request failures remain visible in diagnostics.
-    private func appendGrokBotUsage(to lines: inout [MetricLine], accessToken: String) async {
+    private func appendGrokBotUsage(to mapped: inout CursorMappedUsage, accessToken: String) async {
         guard let usage = await fetchOptionalJSONObject(label: "Grok Bot usage", request: {
             try await self.usageClient.fetchGrokBotUsage(accessToken: accessToken)
         }) else {
@@ -234,12 +234,21 @@ final class CursorProvider: ProviderRuntime {
         else {
             return
         }
-        guard CursorUsageMapper.applyGrokBotUsage(usage, to: &lines, now: now()) else {
+        guard CursorUsageMapper.applyGrokBotUsage(usage, to: &mapped.lines, now: now()) else {
             if usage["usagePercent"] != nil || usage["hasNonZeroIncludedLimit"] as? Bool == true ||
                 usage["hasAvailableUsage"] as? Bool == true {
                 AppLog.warn(LogTag.plugin("cursor"), "optional Grok Bot usage response contained invalid usage metadata")
             }
             return
+        }
+        if usage["isUnified"] as? Bool == true,
+           !mapped.lines.contains(where: { $0.label == "Requests" }),
+           case .progress(_, _, _, .percent, let reset?, let period, _) = mapped.lines.first(where: { $0.label == "Total usage" }),
+           period == MetricPeriod.weekMs, reset > now() {
+            mapped.isUnifiedSubscription = true
+            if let plan = (usage["cursorPlanName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !plan.isEmpty {
+                mapped.plan = plan
+            }
         }
     }
 
@@ -472,7 +481,8 @@ final class CursorProvider: ProviderRuntime {
             plan: mapped.plan,
             lines: mapped.lines,
             refreshedAt: now(),
-            usageHistory: usageHistory
+            usageHistory: usageHistory,
+            isUnifiedSubscription: mapped.isUnifiedSubscription
         )
     }
 }

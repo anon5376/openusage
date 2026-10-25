@@ -491,7 +491,8 @@ final class CursorEnterpriseProviderTests: XCTestCase {
             let snapshot = await provider.refresh()
 
             XCTAssertNil(snapshot.errorCategory)
-            XCTAssertEqual(snapshot.plan, "Enterprise")
+            XCTAssertEqual(snapshot.plan, isUnified ? "Premium" : "Enterprise")
+            XCTAssertEqual(snapshot.isUnifiedSubscription, isUnified)
             if isUnified {
                 XCTAssertEqual(snapshot.lines.map(\.label), ["Total usage", "On-demand"])
                 guard case .progress(_, let used, let limit, let format, let resetsAt, let periodDurationMs, _) =

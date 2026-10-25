@@ -12,6 +12,12 @@ Tracks Grok Build credit usage using the login from the Grok CLI.
 
 When Grok reports your subscription tier, OpenUsage shows it beside the provider name.
 
+If Cursor explicitly reports The X Subscription and both sources return matching current weekly
+readings, the dashboard puts Grok's source-labelled local spend and trend rows in the **XPass** card.
+It shows the shared allowance once and omits the legacy pay-as-you-go badge there. See
+[Cursor](cursor.md) for the matching rule. Different, stale or failed readings retain the Grok card;
+OpenUsage never adds two quota percentages together or links accounts.
+
 The weekly shared pool is the limit Grok enforces for unified-billing accounts (the old monthly credits meter is legacy and no longer shown). Accounts that haven't been migrated to unified billing have no weekly pool, so the Weekly tile reads "No data" there.
 
 ## Where credentials come from

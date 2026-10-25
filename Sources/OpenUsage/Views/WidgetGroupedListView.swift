@@ -24,17 +24,19 @@ struct WidgetGroupedListView: View {
 
     @Environment(\.resetClaims) private var resetClaims
 
+    private var displayGroups: [ProviderGroup] { dataStore.xPassPresentation.groups(layout.displayGroups) }
+
     var body: some View {
         // Provider-section spacing is noticeably wider than the in-card row rhythm (so groups
         // still read as groups); the exact step comes from the density setting.
         VStack(alignment: .leading, spacing: density.sectionSpacing) {
-            ForEach(layout.displayGroups) { group in
+            ForEach(displayGroups) { group in
                 section(group)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onPreferenceChange(ReorderFramePreferenceKey.self) { frameStore.frames = $0 }
-        .animation(Motion.spring, value: layout.displayGroups.map(\.provider.id))
+        .animation(Motion.spring, value: displayGroups.map(\.provider.id))
     }
 
     private func section(_ group: ProviderGroup) -> some View {
@@ -51,7 +53,7 @@ struct WidgetGroupedListView: View {
             provider: group.provider,
             plan: dataStore.plan(for: group.provider.id),
             warning: dataStore.headerNotice(for: group.provider.id),
-            refreshing: dataStore.refreshingProviderIDs.contains(group.provider.id),
+            refreshing: dataStore.xPassPresentation.sourceIDs(for: group).contains { dataStore.refreshingProviderIDs.contains($0) },
             staleness: dataStore.stalenessHint(for: group.provider.id),
             onCopyScreenshot: { shareCard(group) }
         )
@@ -62,11 +64,17 @@ struct WidgetGroupedListView: View {
             // Hides the whole provider section (the Customize provider list brings it back). Mirrors
             // the per-metric "Hide" but one level up, so the verb order reads the same on a header as a row.
             Button("Hide \(group.provider.displayName)") {
-                container.enablement.setEnabled(false, for: group.provider.id)
+                for id in dataStore.xPassPresentation.sourceIDs(for: group) {
+                    container.enablement.setEnabled(false, for: id)
+                }
             }
             Divider()
             Button("Refresh \(group.provider.displayName)") {
-                Task { await dataStore.refreshOnUserRequest(providerID: group.provider.id) }
+                Task {
+                    for id in dataStore.xPassPresentation.sourceIDs(for: group) {
+                        await dataStore.refreshOnUserRequest(providerID: id)
+                    }
+                }
             }
             Button("Customize…") {
                 openCustomize(for: group.provider.id)
@@ -130,8 +138,8 @@ struct WidgetGroupedListView: View {
         // recomputed several times per row (twice per adjacent pair plus once in `row`).
         let providerID = group.provider.id
         let isExpanded = layout.isProviderExpanded(providerID)
-        let alwaysRows = resolvedRows(group.alwaysShownWidgets)
-        let expandedRows = resolvedRows(group.expandedWidgets)
+        let alwaysRows = resolvedRows(group.alwaysShownWidgets, provider: group.provider)
+        let expandedRows = resolvedRows(group.expandedWidgets, provider: group.provider)
         // Text-row condensing stays within Always Visible and On Demand groups; it never crosses
         // their separator. While collapsed, only the Always Visible group is passed through.
         let condensedIDs = visibleCondensedTextRowIDs(alwaysRows: alwaysRows, expandedRows: isExpanded ? expandedRows : [])
@@ -150,7 +158,7 @@ struct WidgetGroupedListView: View {
             ForEach(cardRows) { cardRow in
                 switch cardRow {
                 case .metric(let entry):
-                    row(entry.descriptor, data: entry.data, in: providerID,
+                    row(entry.descriptor, data: entry.data, in: entry.descriptor.providerID,
                         condensedTop: condensedIDs.contains(entry.descriptor.id))
                 case .links(let links):
                     ProviderLinksView(links: links)
@@ -167,10 +175,10 @@ struct WidgetGroupedListView: View {
         }
     }
 
-    private func resolvedRows(_ widgets: [PlacedWidget]) -> [ResolvedRow] {
+    private func resolvedRows(_ widgets: [PlacedWidget], provider: Provider) -> [ResolvedRow] {
         widgets.compactMap { widget -> ResolvedRow? in
             guard let descriptor = layout.descriptor(for: widget) else { return nil }
-            return ResolvedRow(widget: widget, descriptor: descriptor, data: dataStore.data(for: descriptor))
+            return ResolvedRow(widget: widget, descriptor: descriptor, data: dataStore.data(for: descriptor, in: provider))
         }
     }
 
@@ -288,7 +296,7 @@ struct WidgetGroupedListView: View {
             active: $activeProviderID,
             lift: $reorderLift,
             makeLift: { makeProviderLift(for: group, value: $0) },
-            orderedIDs: { layout.displayGroups.map(\.provider.id) },
+            orderedIDs: { displayGroups.map(\.provider.id) },
             reorder: { layout.reorderProvider(dragged: group.provider.id, target: $0) }
         )
     }
@@ -338,12 +346,12 @@ struct WidgetGroupedListView: View {
         let isExpanded = layout.isProviderExpanded(group.provider.id)
         let alwaysRows = group.alwaysShownWidgets.compactMap { widget -> WidgetData? in
             guard let descriptor = layout.descriptor(for: widget) else { return nil }
-            return dataStore.data(for: descriptor)
+            return dataStore.data(for: descriptor, in: group.provider)
         }
         let expandedRows = isExpanded
             ? group.expandedWidgets.compactMap { widget -> WidgetData? in
                 guard let descriptor = layout.descriptor(for: widget) else { return nil }
-                return dataStore.data(for: descriptor)
+                return dataStore.data(for: descriptor, in: group.provider)
             }
             : []
         let links = group.provider.visibleLinks
@@ -365,9 +373,12 @@ struct WidgetGroupedListView: View {
     }
 
     private func makeMetricLift(for descriptor: WidgetDescriptor, value: DragGesture.Value) -> ReorderLift? {
-        ReorderLift.make(
+        let provider = displayGroups.first { group in
+            group.widgets.contains { $0.descriptorID == descriptor.id }
+        }?.provider
+        return ReorderLift.make(
             id: descriptor.id,
-            payload: .dashboardMetric(data: dataStore.data(for: descriptor)),
+            payload: .dashboardMetric(data: dataStore.data(for: descriptor, in: provider)),
             value: value,
             frames: frameStore.frames
         )

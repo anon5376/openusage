@@ -19,6 +19,8 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
     /// Set only on error snapshots: a stable, non-PII bucket for the failure, read by telemetry on the
     /// failure path. Always `nil` on success (and error snapshots aren't cached), so it never persists.
     var errorCategory: ErrorCategory?
+    /// Explicit unified-billing metadata; optional so pre-XPass snapshot caches still decode.
+    var isUnifiedSubscription: Bool?
 
     init(
         providerID: String,
@@ -28,7 +30,8 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
         refreshedAt: Date = Date(),
         usageHistory: ProviderUsageHistory? = nil,
         warning: String? = nil,
-        errorCategory: ErrorCategory? = nil
+        errorCategory: ErrorCategory? = nil,
+        isUnifiedSubscription: Bool? = nil
     ) {
         self.providerID = providerID
         self.displayName = displayName
@@ -38,6 +41,7 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
         self.usageHistory = usageHistory
         self.warning = warning
         self.errorCategory = errorCategory
+        self.isUnifiedSubscription = isUnifiedSubscription
     }
 
     func line(label: String) -> MetricLine? {
@@ -53,7 +57,8 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
         lines: [MetricLine],
         refreshedAt: Date,
         usageHistory: ProviderUsageHistory? = nil,
-        warning: String? = nil
+        warning: String? = nil,
+        isUnifiedSubscription: Bool? = nil
     ) -> ProviderSnapshot {
         ProviderSnapshot(
             providerID: provider.id,
@@ -62,7 +67,8 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
             lines: lines,
             refreshedAt: refreshedAt,
             usageHistory: usageHistory,
-            warning: warning
+            warning: warning,
+            isUnifiedSubscription: isUnifiedSubscription
         )
     }
 

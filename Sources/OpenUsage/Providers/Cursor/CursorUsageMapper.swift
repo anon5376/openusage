@@ -3,6 +3,7 @@ import Foundation
 struct CursorMappedUsage: Equatable, Sendable {
     var plan: String?
     var lines: [MetricLine]
+    var isUnifiedSubscription = false
 }
 
 /// The handful of facts the three plan-usage decisions read off Cursor's untyped `usage` payload —

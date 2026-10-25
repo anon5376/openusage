@@ -591,7 +591,7 @@ final class WidgetDataStore {
         return "Refresh failed"
     }
 
-    func data(for descriptor: WidgetDescriptor) -> WidgetData {
+    func data(for descriptor: WidgetDescriptor, in provider: Provider? = nil) -> WidgetData {
         var result: WidgetData
         if let snapshot = snapshots[descriptor.providerID],
            let line = snapshot.line(label: descriptor.metricLabel),
@@ -610,6 +610,15 @@ final class WidgetDataStore {
         result.displayMode = meterStyle
         result.resetDisplayMode = resetDisplayMode
         result.alwaysShowPacing = alwaysShowPacing
+        if let provider, provider.displayName == "XPass" {
+            result.icon = provider.icon
+            if descriptor.id == "cursor.usage" {
+                result.title = "Weekly"
+            } else if descriptor.isSpendTile || descriptor.id.hasSuffix(".trend") {
+                let source = descriptor.providerID == "grok" ? "Grok" : "Cursor"
+                result.title = "\(source) \(result.title)"
+            }
+        }
         return result
     }
 
