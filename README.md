@@ -13,7 +13,15 @@ OpenUsage shows how much of your AI coding plans you've used: session and weekly
 
 ## Installation
 
-Build this fork on macOS 15 (Sequoia) or later with the Swift toolchain installed:
+**[Download OpenUsage XPass for Mac (.dmg)](https://github.com/anon5376/openusage/releases/download/xpass-2026-10-25/OpenUsage-XPass-2026-10-25-macOS-arm64.dmg)** — Apple Silicon (M1 or later), macOS 15 or later.
+
+Quit any running OpenUsage app, open the DMG, drag **OpenUsage** to **Applications**, and launch it. This preview is ad-hoc signed and **not notarized**. If macOS blocks it, follow [Apple's Open Anyway instructions](https://support.apple.com/en-us/102445).
+
+Use your existing Grok CLI login. In Customize, enable **XPass** and turn off **Cursor** for one Grok-backed tracker. This preview has automatic updates and iCloud sync disabled. See the [release notes, ZIP download, and checksums](https://github.com/anon5376/openusage/releases/tag/xpass-2026-10-25).
+
+### Build from source
+
+With the Swift toolchain installed:
 
 ```sh
 git clone --branch xpass https://github.com/anon5376/openusage.git
@@ -21,9 +29,7 @@ cd openusage
 ./script/build_and_run.sh
 ```
 
-The script builds and launches `dist/OpenUsage.app`. To install it, quit OpenUsage and move that app to your Applications folder. This development build has automatic updates disabled and uses separate settings from upstream installations.
-
-This fork currently publishes source code. The Homebrew cask and [upstream releases](https://github.com/robinebers/openusage/releases/latest) install upstream OpenUsage.
+The script builds and launches `dist/OpenUsage.app` using separate development settings. The Homebrew cask and [upstream releases](https://github.com/robinebers/openusage/releases/latest) install upstream OpenUsage.
 
 ## Supported Providers
 
@@ -52,7 +58,7 @@ Most providers read the credentials already on your machine (keychain, auth file
 - **[Local HTTP API](docs/local-http-api.md).** Other apps can read machine-friendly limits from `127.0.0.1:6736/v1/limits`; the legacy `/v1/usage` UI contract remains supported. It is loopback-only and never serves credentials; note that browser pages can read it too — see the [privacy note](docs/local-http-api.md#cors-and-privacy).
 - **[Proxy support](docs/proxy.md).** Route provider requests through SOCKS5 or HTTP(S) via `~/.openusage/config.json`.
 - **Native settings.** Launch at login, global shortcut, icon style, theme, density, 12/24-hour time — see [Settings](docs/settings.md).
-- **[Automatic updates](docs/updates.md).** Signed, notarized in-app updates via Sparkle, with an optional beta channel.
+- **Manual fork updates.** Download new builds from [this fork's Releases page](https://github.com/anon5376/openusage/releases).
 
 
 
@@ -65,7 +71,7 @@ For working on the code, see the developer docs: [architecture](docs/architectur
 ## Requirements
 
 - macOS 15 (Sequoia) or later
-- Universal binary — runs natively on both Apple Silicon and Intel Macs
+- Prebuilt download: Apple Silicon (arm64). Intel users can build from source.
 
 The Today / Yesterday / Last 30 Days spend tiles are computed natively from local CLI logs (Claude,
 Codex, and Grok) or Cursor's usage export — no Node.js or other runtime needed. Dollars are estimated
